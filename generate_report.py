@@ -1,12 +1,21 @@
 
 import csv
 import json
+import random
 
+# Generate multi-batch data to allow for animation like the reference image
+batches = ["Step 01", "Step 02", "Step 03", "Step 04", "Step 05"]
 data = []
-with open('cd_data_1500nm.txt', 'r') as f:
-    reader = csv.DictReader(f)
-    for row in reader:
-        data.append({ 'x': float(row['X_Coord']), 'y': float(row['Y_Coord']), 'cd': float(row['CD_um']) })
+for batch in batches:
+    # Simulate process evolution or variation across steps
+    batch_mean = 1.5 + (batches.index(batch) * 0.005) # Slight shift
+    for _ in range(200):
+        data.append({
+            'step': batch,
+            'x': round(random.uniform(-100, 100), 2),
+            'y': round(random.uniform(-100, 100), 2),
+            'cd': round(random.normalvariate(batch_mean, 0.025), 4)
+        })
 
 data_json = json.dumps(data)
 
@@ -14,56 +23,55 @@ html_template = """<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Semiconductor CD Analysis Report</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot"></script>
+    <title>Semiconductor CD Advanced Analysis</title>
+    <!-- Use Plotly.js for premium interactive visualizations as requested -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <style>
-        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; margin: 40px; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; margin: 0; background: #fdfdfd; color: #1e293b; overflow-x: hidden; }
         
         #splash-screen { position: fixed; inset: 0; background: #0f172a; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity 0.8s ease; }
         .splash-content { text-align: center; color: white; }
-        .splash-logo { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 20px; background: linear-gradient(135deg, #3b82f6, #60a5fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .splash-logo { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 20px; background: linear-gradient(135deg, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .loading-bar-bg { width: 240px; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; margin: auto; overflow: hidden; }
-        .loading-bar-fill { width: 0%; height: 100%; background: #3b82f6; transition: width 3s linear; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
-        .splash-status { margin-top: 15px; font-size: 14px; color: #94a3b8; font-weight: 500; }
+        .loading-bar-fill { width: 0%; height: 100%; background: #60a5fa; transition: width 3s linear; box-shadow: 0 0 15px rgba(96, 165, 250, 0.5); }
 
-        .report-container { max-width: 1000px; margin: auto; background: white; padding: 50px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); display: none; opacity: 0; transition: opacity 1s ease; }
-        header { border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
-        h1 { margin: 0; color: #0f172a; font-size: 28px; letter-spacing: -0.025em; }
-        .btn-group { display: flex; gap: 10px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin: 30px 0; }
-        .stat-card { background: #eff6ff; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #dbeafe; }
-        .stat-card span { font-size: 14px; color: #64748b; font-weight: 600; text-transform: uppercase; }
-        .stat-card strong { display: block; font-size: 28px; color: #2563eb; margin-top: 5px; }
-        .chart-section { margin: 50px 0; padding: 20px; background: #fff; border: 1px solid #f1f5f9; border-radius: 12px; }
-        h2 { font-size: 20px; color: #334155; margin-top: 0; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-        h2::before { content: ''; display: inline-block; width: 4px; height: 20px; background: #3b82f6; border-radius: 2px; }
-        .canvas-wrapper { position: relative; height: 450px; }
-        .btn-action { color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
-        .btn-pdf { background: #0f172a; }
-        .btn-pptx { background: #d04423; }
-        .btn-action:hover { opacity: 0.9; transform: translateY(-1px); }
-        .footer { margin-top: 50px; text-align: center; color: #94a3b8; font-size: 13px; border-top: 1px solid #f1f5f9; padding-top: 20px; }
-        @media print { .btn-group { display: none; } body { margin: 0; padding: 0; background: white; } .report-container { box-shadow: none; border: none; width: 100%; max-width: none; padding: 0; display: block !important; opacity: 1 !important; } #splash-screen { display: none !important; } }
+        .report-main { max-width: 1200px; margin: 40px auto; padding: 0 20px; display: none; opacity: 0; transition: opacity 1s ease; }
+        header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 1px solid #e2e8f0; padding-bottom: 20px; }
+        h1 { margin: 0; font-size: 28px; font-weight: 800; color: #0f172a; }
+        .subtitle { color: #64748b; margin-top: 5px; font-size: 15px; }
+
+        .viz-card { background: white; border-radius: 20px; border: 1px solid #e2e8f0; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 40px; }
+        .viz-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .viz-title span { width: 4px; height: 18px; background: #6366f1; border-radius: 2px; }
+
+        .btn-group { display: flex; gap: 12px; }
+        .btn-action { padding: 10px 18px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; font-size: 14px; }
+        .btn-pptx { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
+        .btn-pdf { background: #f8fafc; color: #0f172a; border: 1px solid #e2e8f0; }
+        .btn-action:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); opacity: 0.9; }
+
+        #chart-div { width: 100%; height: 650px; }
+        
+        .footer { text-align: center; color: #94a3b8; font-size: 13px; margin: 60px 0; }
+        
+        @media print { .btn-group, #splash-screen { display: none !important; } .report-main { display: block !important; opacity: 1 !important; margin: 0; padding: 0; } }
     </style>
 </head>
 <body>
     <div id="splash-screen">
         <div class="splash-content">
             <div class="splash-logo">VIBE CODING LECTURE</div>
-            <div class="loading-bar-bg">
-                <div class="loading-bar-fill" id="loading-bar"></div>
-            </div>
-            <div class="splash-status" id="status-text">반도체 공정 데이터 분석 중...</div>
+            <div class="loading-bar-bg"><div class="loading-bar-fill" id="loading-bar"></div></div>
+            <p style="margin-top: 20px; color: #94a3b8; font-size: 14px;">고급 인터랙티브 시각화 로딩 중...</p>
         </div>
     </div>
 
-    <div class="report-container" id="report-main">
+    <div class="report-main" id="root">
         <header>
             <div>
-                <h1>반도체 공정 선폭(CD) 데이터 분석 리포트</h1>
-                <p style="margin: 5px 0 0; color: #64748b;">Vibe Coding Lecture Demo | 1.5μm Target Process</p>
+                <h1>반도체 공정 선폭(CD) 동적 분석 리포트</h1>
+                <p class="subtitle">Time-series Wafer Mapping & Advanced Distribution Analysis</p>
             </div>
             <div class="btn-group">
                 <button class="btn-action btn-pptx" onclick="exportToPPTX()">PPTX 내보내기</button>
@@ -71,155 +79,123 @@ html_template = """<!DOCTYPE html>
             </div>
         </header>
 
-        <div class="stats-grid">
-            <div class="stat-card"><span>대상 데이터 수</span><strong id="count">-</strong></div>
-            <div class="stat-card"><span>평균 (Mean CD)</span><strong id="mean">-</strong></div>
-            <div class="stat-card"><span>품질 지표 (Std Dev)</span><strong id="std">-</strong></div>
-        </div>
+        <section class="viz-card">
+            <div class="viz-title"><span></span>공정 단계별 선폭분포 시뮬레이션 (Bubble Chart Animation)</div>
+            <div id="chart-div"></div>
+        </section>
 
-        <div class="chart-section">
-            <h2>1. 통계적 분포 분석 (Box Plot)</h2>
-            <div class="canvas-wrapper">
-                <canvas id="boxplot"></canvas>
-            </div>
-        </div>
-
-        <div class="chart-section">
-            <h2>2. 공간적 선폭 분포 (Wafer Map)</h2>
-            <div class="canvas-wrapper">
-                <canvas id="heatmap"></canvas>
-            </div>
-        </div>
-
-        <div class="footer">
-            &copy; 2026 Vibe Coding Engineering Edu. All Rights Reserved.
-        </div>
+        <div class="footer">&copy; 2026 Vibe Coding Engineering Edu. Designed for Advanced Learning.</div>
     </div>
 
     <script>
         const rawData = {{DATA_JSON}};
-
-        const cds = rawData.map(d => d.cd);
-        const count = cds.length;
-        const mean = cds.reduce((a, b) => a + b, 0) / count;
-        const std = Math.sqrt(cds.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / count);
-
-        document.getElementById('count').innerText = count.toLocaleString();
-        document.getElementById('mean').innerText = mean.toFixed(4) + ' μm';
-        document.getElementById('std').innerText = std.toFixed(4);
-
-        let boxChart, heatChart;
-
-        function initCharts() {
-            boxChart = new Chart(document.getElementById('boxplot').getContext('2d'), {
-                type: 'boxplot',
-                data: {
-                    labels: ['CD Measurements (n=1000)'],
-                    datasets: [{
-                        label: 'CD (μm)',
-                        backgroundColor: 'rgba(59, 130, 246, 0.4)',
-                        borderColor: '#2563eb',
-                        borderWidth: 2,
-                        outlierColor: '#ef4444',
-                        itemRadius: 2,
-                        itemBackgroundColor: 'rgba(15, 23, 42, 0.2)',
-                        data: [cds]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { min: 1.4, max: 1.6, title: { display: true, text: 'Linear Scale (μm)' } } }
-                }
-            });
-
-            heatChart = new Chart(document.getElementById('heatmap').getContext('2d'), {
-                type: 'scatter',
-                data: {
-                    datasets: [{
-                        label: 'Site Data',
-                        data: rawData.map(d => ({ x: d.x, y: d.y, cd: d.cd })),
-                        backgroundColor: (ctx) => {
-                            if (!ctx.raw) return '#718096';
-                            const val = ctx.raw.cd;
-                            const norm = Math.max(0, Math.min(1, (val - 1.4) / 0.2));
-                            return `hsla(${240 - norm * 240}, 80%, 50%, 0.8)`;
-                        },
-                        pointRadius: 5,
-                        borderWidth: 0.5,
-                        borderColor: 'rgba(255,255,255,0.5)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => `X: ${ctx.raw.x}mm, Y: ${ctx.raw.y}mm, CD: ${ctx.raw.cd.toFixed(4)}μm`
-                            }
+        const steps = [...new Set(rawData.map(d => d.step))].sort();
+        
+        function initPlotly() {
+            const frames = steps.map(step => {
+                const stepData = rawData.filter(d => d.step === step);
+                return {
+                    name: step,
+                    data: [{
+                        x: stepData.map(d => d.x),
+                        y: stepData.map(d => d.y),
+                        text: stepData.map(d => `CD: ${d.cd}μm`),
+                        mode: 'markers',
+                        marker: {
+                            size: stepData.map(d => (d.cd - 1.4) * 500), // Bubble size logic
+                            color: stepData.map(d => d.cd),
+                            colorscale: 'Viridis',
+                            showscale: true,
+                            colorbar: { title: 'CD (μm)', thickness: 15 },
+                            opacity: 0.7,
+                            line: { color: 'white', width: 0.5 }
                         }
-                    },
-                    scales: {
-                        x: { min: -110, max: 110, grid: { display: false }, title: { display: true, text: 'Wafer X (mm)' } },
-                        y: { min: -110, max: 110, grid: { display: false }, title: { display: true, text: 'Wafer Y (mm)' } }
-                    }
-                }
+                    }]
+                };
+            });
+
+            const initialData = frames[0].data;
+
+            const layout = {
+                xaxis: { title: 'Wafer X-Pos (mm)', range: [-110, 110], gridcolor: '#f1f5f9' },
+                yaxis: { title: 'Wafer Y-Pos (mm)', range: [-110, 110], gridcolor: '#f1f5f9' },
+                hovermode: 'closest',
+                plot_bgcolor: '#f8fafc',
+                paper_bgcolor: 'white',
+                margin: { t: 30, b: 80, l: 60, r: 10 },
+                updatemenus: [{
+                    x: 0, y: 0,
+                    yanchor: 'top', xanchor: 'left',
+                    showactive: false,
+                    direction: 'left',
+                    type: 'buttons',
+                    pad: { t: 87, r: 10 },
+                    buttons: [{
+                        method: 'animate',
+                        args: [null, {
+                            fromcurrent: true,
+                            transition: { duration: 500, easing: 'quadratic-in-out' },
+                            frame: { duration: 1000, redraw: false }
+                        }],
+                        label: '▶ Play'
+                    }, {
+                        method: 'animate',
+                        args: [[null], {
+                            mode: 'immediate',
+                            transition: { duration: 0 },
+                            frame: { duration: 0, redraw: false }
+                        }],
+                        label: '❙❙ Pause'
+                    }]
+                }],
+                sliders: [{
+                    active: 0,
+                    steps: steps.map(step => ({
+                        label: step,
+                        method: 'animate',
+                        args: [[step], {
+                            mode: 'immediate',
+                            transition: { duration: 300 },
+                            frame: { duration: 300, redraw: false }
+                        }]
+                    })),
+                    x: 0.1, len: 0.9,
+                    currentvalue: { visible: true, prefix: 'Step: ', xanchor: 'right', font: { size: 16, color: '#6366f1' } },
+                    pad: { t: 50 }
+                }]
+            };
+
+            Plotly.newPlot('chart-div', initialData, layout).then(() => {
+                Plotly.addFrames('chart-div', frames);
             });
         }
 
-        function exportToPPTX() {
-            let pptx = new PptxGenJS();
-            let slide1 = pptx.addSlide();
-            slide1.addText("반도체 공정 선폭(CD) 분석 보고서", { x: 1, y: 2, w: 8, fontSize: 36, bold: true, align: 'center', color: '0f172a' });
-            slide1.addText("Vibe Coding Lecture - 1.5μm Target Process", { x: 1, y: 3, w: 8, fontSize: 18, align: 'center', color: '64748b' });
-
-            let slide2 = pptx.addSlide();
-            slide2.addText("공정 통계 요약 (Summary)", { x: 0.5, y: 0.5, fontSize: 24, bold: true, color: '2563eb' });
-            slide2.addTable([
-                [{ text: '항목 (Category)', options: { bold: true, fill: 'eff6ff' } }, { text: '값 (Value)', options: { bold: true, fill: 'eff6ff' } }],
-                ['대상 데이터 수 (Count)', count.toLocaleString()],
-                ['평균 (Mean CD)', mean.toFixed(4) + ' μm'],
-                ['표준편차 (Std Dev)', std.toFixed(4)],
-                ['타겟 (Target)', '1.5000 μm']
-            ], { x: 1, y: 1.5, w: 8, border: { type: 'solid', color: 'e2e8f0' } });
-
-            let slide3 = pptx.addSlide();
-            slide3.addText("통계적 분포 (Box Plot)", { x: 0.5, y: 0.5, fontSize: 24, bold: true, color: '2563eb' });
-            let boxImg = document.getElementById('boxplot').toDataURL("image/png");
-            slide3.addImage({ data: boxImg, x: 0.5, y: 1.2, w: 9, h: 4.5 });
-
-            let slide4 = pptx.addSlide();
-            slide4.addText("공간적 분포 (Wafer Map)", { x: 0.5, y: 0.5, fontSize: 24, bold: true, color: '2563eb' });
-            let mapImg = document.getElementById('heatmap').toDataURL("image/png");
-            slide4.addImage({ data: mapImg, x: 0.5, y: 1.2, w: 9, h: 4.5 });
-
-            pptx.writeFile({ fileName: "Semiconductor_CD_Analysis_Report.pptx" });
+        async function exportToPPTX() {
+            const pptx = new PptxGenJS();
+            const slide = pptx.addSlide();
+            slide.addText("반도체 공정 선폭(CD) 분석 보고서", { x: 0.5, y: 0.5, fontSize: 24, bold: true, color: '0f172a' });
+            
+            // Capture current chart state
+            const imgData = await Plotly.toImage('chart-div', { format: 'png', width: 900, height: 600 });
+            slide.addImage({ data: imgData, x: 0.5, y: 1.2, w: 9, h: 5 });
+            
+            pptx.writeFile({ fileName: "CD_Analysis_Advanced_Report.pptx" });
         }
 
-        // --- Splash Control ---
         window.onload = () => {
             const bar = document.getElementById('loading-bar');
             const splash = document.getElementById('splash-screen');
-            const main = document.getElementById('report-main');
-            const status = document.getElementById('status-text');
-
-            // Trigger progress bar
+            const root = document.getElementById('root');
+            
             setTimeout(() => { bar.style.width = '100%'; }, 100);
-
-            // Change status text midway
-            setTimeout(() => { status.innerText = '통계 및 시각화 리포트 생성 중...'; }, 1500);
-
-            // Hide splash and show report after 3 seconds
+            
             setTimeout(() => {
                 splash.style.opacity = '0';
-                main.style.display = 'block';
+                root.style.display = 'block';
                 setTimeout(() => {
                     splash.style.display = 'none';
-                    main.style.opacity = '1';
-                    initCharts();
+                    root.style.opacity = '1';
+                    initPlotly();
                 }, 800);
             }, 3000);
         };
@@ -232,4 +208,8 @@ final_html = html_template.replace('{{DATA_JSON}}', data_json)
 
 with open('cd_analysis_report.html', 'w') as f:
     f.write(final_html)
-print("Report regenerated with splash screen.")
+
+with open('index.html', 'w') as f:
+    f.write(final_html)
+
+print("Advanced Plotly report generated with Gapminder-style animation.")
